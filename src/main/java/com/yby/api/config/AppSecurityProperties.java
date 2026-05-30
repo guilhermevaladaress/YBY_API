@@ -16,7 +16,7 @@ public record AppSecurityProperties(
     }
 
     public record Cors(
-        @DefaultValue("http://localhost:3000") String allowedOrigins,
+        @DefaultValue("http://localhost:3000,http://localhost:5173") String allowedOrigins,
         @DefaultValue("true") boolean allowAllInDev
     ) {
     }
