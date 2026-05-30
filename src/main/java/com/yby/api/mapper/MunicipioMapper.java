@@ -1,10 +1,13 @@
 package com.yby.api.mapper;
 
+import com.yby.api.dto.MunicipioDTO;
 import com.yby.api.dto.MunicipioDetalheDTO;
 import com.yby.api.dto.MunicipioRankingDTO;
 import com.yby.api.dto.MunicipioUpdateDTO;
+import com.yby.api.dto.MunicipioUpsertDTO;
 import com.yby.api.entity.Municipio;
 import com.yby.api.entity.enums.Semaforo;
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -13,7 +16,20 @@ import org.springframework.stereotype.Component;
 @Component
 public class MunicipioMapper {
 
-    public MunicipioRankingDTO toRankingDTO(Municipio municipio) {
+    public MunicipioDTO toDTO(Municipio municipio, BigDecimal kpiRetorno) {
+        return new MunicipioDTO(
+            municipio.getId(),
+            municipio.getNome(),
+            municipio.getCodigoIbge(),
+            municipio.getAreaHa(),
+            municipio.getScorePrioridade(),
+            municipio.getSemaforo(),
+            kpiRetorno,
+            municipio.getUltimaAtualizacao()
+        );
+    }
+
+    public MunicipioRankingDTO toRankingDTO(Municipio municipio, BigDecimal kpiRetorno) {
         return new MunicipioRankingDTO(
             municipio.getId(),
             municipio.getNome(),
@@ -21,23 +37,35 @@ public class MunicipioMapper {
             municipio.getScorePrioridade(),
             toLower(municipio.getSemaforo()),
             municipio.getAreaHa(),
-            municipio.getKpiRetorno()
+            kpiRetorno
         );
     }
 
-    public MunicipioDetalheDTO toDetalheDTO(Municipio municipio) {
+    public MunicipioDetalheDTO toDetalheDTO(Municipio municipio, BigDecimal notaRisco,
+                                            BigDecimal kpiRetorno, List<String> pendencias) {
         return new MunicipioDetalheDTO(
             municipio.getId(),
             municipio.getNome(),
             municipio.getCodigoIbge(),
             municipio.getScorePrioridade(),
             toLower(municipio.getSemaforo()),
-            municipio.getNotaRisco(),
-            municipio.getKpiRetorno(),
+            notaRisco,
+            kpiRetorno,
             municipio.getAreaHa(),
-            toPendencias(municipio.getPendenciasResumo()),
+            pendencias == null ? toPendencias(municipio.getPendenciasResumo()) : pendencias,
             municipio.getUltimaAtualizacao()
         );
+    }
+
+    public void applyUpsert(Municipio municipio, MunicipioUpsertDTO dto) {
+        municipio.setNome(dto.nome().trim());
+        municipio.setCodigoIbge(dto.codigoIbge().trim());
+        municipio.setAreaHa(dto.areaHa());
+        municipio.setScorePrioridade(dto.scorePrioridade());
+        if (dto.semaforo() != null) {
+            municipio.setSemaforo(dto.semaforo());
+        }
+        municipio.setGeojsonPolygon(dto.geojsonPolygon());
     }
 
     public void applyUpdate(Municipio municipio, MunicipioUpdateDTO dto) {

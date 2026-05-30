@@ -10,5 +10,7 @@ public interface MunicipioRepository extends JpaRepository<Municipio, Long> {
 
     Optional<Municipio> findByCodigoIbge(String codigoIbge);
 
+    boolean existsByCodigoIbge(String codigoIbge);
+
     List<Municipio> findBySemaforo(Semaforo semaforo);
 }

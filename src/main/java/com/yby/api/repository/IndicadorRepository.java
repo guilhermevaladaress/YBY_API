@@ -12,6 +12,8 @@ public interface IndicadorRepository extends JpaRepository<Indicador, Long> {
 
     Optional<Indicador> findByMunicipioIdAndAno(Long municipioId, Integer ano);
 
+    Optional<Indicador> findTopByMunicipioIdOrderByAnoDesc(Long municipioId);
+
     List<Indicador> findByMunicipioIdAndAnoBetweenOrderByAnoAsc(Long municipioId, Integer anoInicio, Integer anoFim);
 
     List<Indicador> findByAno(Integer ano);

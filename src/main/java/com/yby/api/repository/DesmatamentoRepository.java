@@ -2,6 +2,7 @@ package com.yby.api.repository;
 
 import com.yby.api.entity.Desmatamento;
 import com.yby.api.entity.enums.FonteDesmatamento;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,6 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface DesmatamentoRepository extends JpaRepository<Desmatamento, Long> {
+
+    List<Desmatamento> findByDataReferenciaBetween(LocalDate dataInicio, LocalDate dataFim);
 
     List<Desmatamento> findByMunicipioIdAndDataReferenciaBetween(Long municipioId, LocalDate dataInicio, LocalDate dataFim);
 
@@ -35,4 +38,14 @@ public interface DesmatamentoRepository extends JpaRepository<Desmatamento, Long
         where extract(year from d.data_referencia) = :ano
     """, nativeQuery = true)
     java.math.BigDecimal findTotalByAno(@Param("ano") Integer ano);
+
+    @Query("""
+        select coalesce(sum(d.areaHa), 0)
+        from Desmatamento d
+        where d.municipio.id = :municipioId
+          and d.dataReferencia between :dataInicio and :dataFim
+    """)
+    BigDecimal sumAreaByMunicipioAndPeriodo(@Param("municipioId") Long municipioId,
+                                            @Param("dataInicio") LocalDate dataInicio,
+                                            @Param("dataFim") LocalDate dataFim);
 }

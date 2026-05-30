@@ -1,17 +1,18 @@
 package com.yby.api.service;
 
-import com.yby.api.dto.AuthUserDTO;
+import com.yby.api.config.AppSecurityProperties;
+import com.yby.api.dto.ChangePasswordRequestDTO;
 import com.yby.api.dto.LoginRequestDTO;
 import com.yby.api.dto.LoginResponseDTO;
-import com.yby.api.dto.PasswordChangeRequestDTO;
-import com.yby.api.dto.RegisterRequestDTO;
-import com.yby.api.entity.UserAccount;
-import com.yby.api.entity.enums.UserRole;
+import com.yby.api.dto.UsuarioDTO;
+import com.yby.api.entity.Usuario;
 import com.yby.api.exception.BusinessException;
 import com.yby.api.exception.ResourceNotFoundException;
-import com.yby.api.mapper.AuthMapper;
-import com.yby.api.repository.UserAccountRepository;
+import com.yby.api.mapper.UsuarioMapper;
+import com.yby.api.repository.UsuarioRepository;
+import com.yby.api.security.AppUserDetails;
 import com.yby.api.security.JwtService;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,78 +22,68 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuthService {
 
-    private final UserAccountRepository userAccountRepository;
+    private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-    private final AuditService auditService;
+    private final UsuarioMapper usuarioMapper;
+    private final AppSecurityProperties appSecurityProperties;
 
-    public AuthService(
-        UserAccountRepository userAccountRepository,
-        PasswordEncoder passwordEncoder,
-        JwtService jwtService,
-        AuthenticationManager authenticationManager,
-        AuditService auditService
-    ) {
-        this.userAccountRepository = userAccountRepository;
+    public AuthService(UsuarioRepository usuarioRepository,
+                       PasswordEncoder passwordEncoder,
+                       JwtService jwtService,
+                       AuthenticationManager authenticationManager,
+                       UsuarioMapper usuarioMapper,
+                       AppSecurityProperties appSecurityProperties) {
+        this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
-        this.auditService = auditService;
-    }
-
-    @Transactional
-    public AuthUserDTO register(RegisterRequestDTO request) {
-        if (userAccountRepository.existsByEmailIgnoreCase(request.email())) {
-            throw new BusinessException("Email ja cadastrado");
-        }
-
-        UserAccount user = new UserAccount();
-        user.setNome(request.nome().trim());
-        user.setEmail(request.email().trim().toLowerCase());
-        user.setSenhaHash(passwordEncoder.encode(request.senha()));
-        user.setRole(request.role() == null ? UserRole.SERVIDOR : request.role());
-        user.setAtivo(true);
-        UserAccount saved = userAccountRepository.save(user);
-
-        auditService.registrarEscritaGestor("REGISTER", "usuarios", String.valueOf(saved.getId()), saved.getEmail());
-        return AuthMapper.toDto(saved);
+        this.usuarioMapper = usuarioMapper;
+        this.appSecurityProperties = appSecurityProperties;
     }
 
     public LoginResponseDTO login(LoginRequestDTO request) {
-        authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(request.email().trim().toLowerCase(), request.senha())
-        );
+        String email = request.email().trim().toLowerCase();
+        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, request.senha()));
 
-        UserAccount user = userAccountRepository.findByEmailIgnoreCase(request.email())
+        Usuario usuario = usuarioRepository.findByEmail(email)
             .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado"));
 
-        String token = jwtService.generateToken(user);
-        return new LoginResponseDTO("Bearer", token, jwtService.getExpirationSeconds(), AuthMapper.toDto(user));
+        if (!usuario.isAtivo()) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "Usuario desativado");
+        }
+
+        AppUserDetails details = new AppUserDetails(usuario);
+        String token = jwtService.generateToken(details);
+        return new LoginResponseDTO(
+            "Bearer",
+            token,
+            appSecurityProperties.jwt().expiresInSeconds(),
+            usuario.getRole().name()
+        );
     }
 
-    public AuthUserDTO me(String email) {
-        UserAccount user = userAccountRepository.findByEmailIgnoreCase(email)
+    public UsuarioDTO me(String email) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
             .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado"));
-        return AuthMapper.toDto(user);
+        return usuarioMapper.toDTO(usuario);
     }
 
     @Transactional
-    public void changePassword(String email, PasswordChangeRequestDTO request) {
-        UserAccount user = userAccountRepository.findByEmailIgnoreCase(email)
+    public void changePassword(String email, ChangePasswordRequestDTO request) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
             .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado"));
 
-        if (!passwordEncoder.matches(request.senhaAtual(), user.getSenhaHash())) {
-            throw new BusinessException("Senha atual invalida");
+        if (!passwordEncoder.matches(request.senhaAtual(), usuario.getSenhaHash())) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "Senha atual invalida");
         }
-
         if (request.senhaAtual().equals(request.novaSenha())) {
-            throw new BusinessException("A nova senha deve ser diferente da atual");
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "A nova senha deve ser diferente da atual");
         }
 
-        user.setSenhaHash(passwordEncoder.encode(request.novaSenha()));
-        user.setTrocaSenhaPrimeiroAcesso(false);
-        userAccountRepository.save(user);
-        auditService.registrarEscritaGestor("CHANGE_PASSWORD", "usuarios", String.valueOf(user.getId()), user.getEmail());
+        usuario.setSenhaHash(passwordEncoder.encode(request.novaSenha()));
+        usuario.setPrimeiroAcessoTrocaSenha(false);
+        usuarioRepository.save(usuario);
     }
 }

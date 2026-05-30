@@ -6,5 +6,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AlertaRepository extends JpaRepository<Alerta, Long> {
 
-    List<Alerta> findByMunicipioIdAndAtivoTrue(Long municipioId);
+    List<Alerta> findByMunicipioIdAndAtivoTrueOrderByCreatedAtDesc(Long municipioId);
+
+    List<Alerta> findByAtivoTrue();
+
+    long countByAtivoTrue();
 }
