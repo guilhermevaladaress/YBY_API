@@ -2,10 +2,10 @@ package com.yby.api.service;
 
 import com.yby.api.entity.AuditLog;
 import com.yby.api.repository.AuditLogRepository;
+import java.time.OffsetDateTime;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import tools.jackson.core.JsonProcessingException;
 import tools.jackson.databind.ObjectMapper;
 
 @Service
@@ -33,11 +33,12 @@ public class AuditService {
         }
 
         AuditLog log = new AuditLog();
+        log.setUsuarioId(-1L);
         log.setUsuarioEmail(authentication.getName());
         log.setAcao(acao);
-        log.setEntidade(entidade);
-        log.setEntidadeId(entidadeId);
-        log.setPayloadRelevante(asJson(payloadRelevante));
+        log.setEntidadeAfetada(entidade + ":" + entidadeId);
+        log.setEventoEm(OffsetDateTime.now());
+        log.setPayload(asJson(payloadRelevante));
         auditLogRepository.save(log);
     }
 
@@ -47,7 +48,7 @@ public class AuditService {
         }
         try {
             return objectMapper.writeValueAsString(payload);
-        } catch (JsonProcessingException ex) {
+        } catch (Exception ex) {
             return "{\"erro\":\"falha_ao_serializar_payload\"}";
         }
     }
