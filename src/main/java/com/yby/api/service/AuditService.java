@@ -42,6 +42,29 @@ public class AuditService {
         auditLogRepository.save(log);
     }
 
+    /**
+     * RN-007-A - Auditoria Ambiental Estendida.
+     *
+     * <p>Registra explicitamente o estado antes/depois da alteracao, a fonte
+     * ({@code MANUAL|INTEGRACAO|RECALCULO}) e a justificativa, permitindo rastrear
+     * decisoes e mudancas manuais (Lei 12.527/2011 - LAI).</p>
+     */
+    public void registrarAlteracao(String acao, String entidade, String entidadeId,
+                                   Object antes, Object depois, FonteAlteracao fonte, String justificativa) {
+        registrarEscritaGestor(acao, entidade, entidadeId,
+            new AlteracaoDetalhada(antes, depois, fonte == null ? null : fonte.name(), justificativa));
+    }
+
+    /** Origem de uma alteracao auditada (RN-007-A). */
+    public enum FonteAlteracao {
+        MANUAL,
+        INTEGRACAO,
+        RECALCULO
+    }
+
+    private record AlteracaoDetalhada(Object antes, Object depois, String fonte, String justificativa) {
+    }
+
     private String asJson(Object payload) {
         if (payload == null) {
             return null;

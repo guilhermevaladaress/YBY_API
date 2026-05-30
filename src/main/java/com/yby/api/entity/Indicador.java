@@ -55,6 +55,24 @@ public class Indicador {
     @Column(name = "area_elegivel_factor", precision = 5, scale = 2)
     private BigDecimal areaElegivelFactor;
 
+    // --- Indicadores sociais (RN-103-B: KPI multidimensional) ---
+
+    /** Empregos formais em conservacao/restauracao gerados no ano. */
+    @Column(name = "empregos_conservacao")
+    private Integer empregosConservacao;
+
+    /** Familias beneficiadas por Pagamento por Servicos Ambientais (Lei 14.119/2021). */
+    @Column(name = "familias_psa")
+    private Integer familiasPsa;
+
+    /** Comunidades tradicionais (quilombolas, indigenas, extrativistas) envolvidas. */
+    @Column(name = "comunidades_tradicionais")
+    private Integer comunidadesTradicionais;
+
+    /** Investimento social aplicado no ano (R$); habilita o bonus de 5-15% da RN-103-B. */
+    @Column(name = "investimento_social", precision = 18, scale = 2)
+    private BigDecimal investimentoSocial;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 

@@ -1,6 +1,8 @@
 package com.yby.api.entity;
 
+import com.yby.api.entity.enums.Bioma;
 import com.yby.api.entity.enums.Semaforo;
+import com.yby.api.entity.enums.VulnerabilidadeHidrica;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -59,6 +61,20 @@ public class Municipio {
 
     @Column(name = "pendencias_resumo", length = 2000)
     private String pendenciasResumo;
+
+    /** Bioma principal do municipio (RN-106-A). Cerrado e o predominante no Tocantins. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "bioma")
+    private Bioma bioma = Bioma.CERRADO;
+
+    /** Vulnerabilidade hidrica usada para calibrar o semaforo em biomas sensiveis (RN-106-A). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "vulnerabilidade_hidrica")
+    private VulnerabilidadeHidrica vulnerabilidadeHidrica = VulnerabilidadeHidrica.BAIXA;
+
+    /** Indica plano de acao ambiental ativo; reduz o risco preditivo (RN-108-A, fator x0,9). */
+    @Column(name = "plano_acao_ativo", nullable = false)
+    private boolean planoAcaoAtivo = false;
 
     @Column(name = "ultima_atualizacao")
     private OffsetDateTime ultimaAtualizacao;

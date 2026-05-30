@@ -48,4 +48,13 @@ public interface DesmatamentoRepository extends JpaRepository<Desmatamento, Long
     BigDecimal sumAreaByMunicipioAndPeriodo(@Param("municipioId") Long municipioId,
                                             @Param("dataInicio") LocalDate dataInicio,
                                             @Param("dataFim") LocalDate dataFim);
+
+    @Query("""
+        select max(d.dataReferencia)
+        from Desmatamento d
+        where d.municipio.id = :municipioId
+          and d.fonte = :fonte
+    """)
+    LocalDate maxDataReferenciaByMunicipioAndFonte(@Param("municipioId") Long municipioId,
+                                                   @Param("fonte") FonteDesmatamento fonte);
 }

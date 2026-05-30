@@ -164,11 +164,26 @@ public class MunicipioService {
             throw new BusinessException(HttpStatus.CONFLICT, "Ja existe municipio com este codigo IBGE");
         }
 
+        Map<String, Object> antes = snapshot(municipio);
         municipioMapper.applyUpdate(municipio, dto);
         atualizarMetricasDerivadas(municipio);
         Municipio saved = municipioRepository.save(municipio);
-        auditService.registrarEscritaGestor("UPDATE", "municipios", String.valueOf(saved.getId()), dto);
+        // RN-007-A: alteracao manual registra antes/depois, fonte e justificativa.
+        auditService.registrarAlteracao("UPDATE", "municipios", String.valueOf(saved.getId()),
+            antes, snapshot(saved), AuditService.FonteAlteracao.MANUAL,
+            "Correcao/atualizacao manual de municipio por GESTOR");
         return municipioMapper.toDTO(saved, calcularKpiRetorno(saved.getId()));
+    }
+
+    private Map<String, Object> snapshot(Municipio municipio) {
+        Map<String, Object> snap = new HashMap<>();
+        snap.put("nome", municipio.getNome());
+        snap.put("codigoIbge", municipio.getCodigoIbge());
+        snap.put("scorePrioridade", municipio.getScorePrioridade());
+        snap.put("semaforo", municipio.getSemaforo());
+        snap.put("bioma", municipio.getBioma());
+        snap.put("areaHa", municipio.getAreaHa());
+        return snap;
     }
 
     @Transactional
