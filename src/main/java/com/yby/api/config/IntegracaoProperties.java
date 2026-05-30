@@ -12,6 +12,7 @@ public record IntegracaoProperties(
     @DefaultValue Ibge ibge,
     @DefaultValue Terrabrasilis terrabrasilis,
     @DefaultValue Inpe inpe,
+    @DefaultValue Seplan seplan,
     @DefaultValue("17") String ufCodigoIbge,
     @DefaultValue("TO") String ufSigla
 ) {
@@ -29,6 +30,15 @@ public record IntegracaoProperties(
 
     public record Inpe(
         @DefaultValue("https://queimadas.dgi.inpe.br/queimadas/bdqueimadas-api") String queimadaBaseUrl,
+        @DefaultValue("10000") int timeoutMs
+    ) {}
+
+    /**
+     * Geoportal da SEPLAN-TO (Secretaria do Planejamento e Orcamento do Tocantins).
+     * GeoServer publico com camadas territoriais usadas no estudo de areas de carbono.
+     */
+    public record Seplan(
+        @DefaultValue("https://geoserver.seplan.to.gov.br/geoserver") String geoserverBaseUrl,
         @DefaultValue("10000") int timeoutMs
     ) {}
 }
