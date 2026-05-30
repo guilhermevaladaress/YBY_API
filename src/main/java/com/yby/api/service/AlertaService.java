@@ -92,6 +92,12 @@ public class AlertaService {
             ? "vermelho"
             : nota.compareTo(new BigDecimal("3.00")) >= 0 ? "amarelo" : "verde";
 
+        // RN-106: bloqueios criticos forcam semaforo vermelho independentemente da nota
+        // (ex.: embargo ativo, sobreposicao critica), pois representam impedimento legal/ambiental.
+        if (possuiBloqueioCritico(alertas)) {
+            semaforo = "vermelho";
+        }
+
         return new RiscoDTO(municipioId, nota, semaforo, pendencias);
     }
 
@@ -154,6 +160,17 @@ public class AlertaService {
         return nota.min(new BigDecimal("10.0"))
             .max(BigDecimal.ZERO)
             .setScale(2, java.math.RoundingMode.HALF_UP);
+    }
+
+    /**
+     * RN-106: identifica bloqueio ambiental/legal relevante que impede a prontidao
+     * para investir (semaforo vermelho), independentemente da nota numerica:
+     * embargo ativo ou sobreposicao critica (gravidade ALTA).
+     */
+    private boolean possuiBloqueioCritico(List<Alerta> alertas) {
+        return alertas.stream().anyMatch(a ->
+            a.getTipo() == AlertaTipo.EMBARGO
+                || (a.getTipo() == AlertaTipo.SOBREPOSICAO && a.getGravidade() == Gravidade.ALTA));
     }
 
     private AlertaTipo parseTipo(String tipo) {

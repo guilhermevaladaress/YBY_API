@@ -44,6 +44,14 @@ public class Usuario {
     @Column(name = "primeiro_acesso_troca_senha", nullable = false)
     private boolean primeiroAcessoTrocaSenha = true;
 
+    /** Token de redefinicao de senha (fluxo "esqueci minha senha"). Nulo quando nao ha solicitacao ativa. */
+    @Column(name = "reset_token", length = 100)
+    private String resetToken;
+
+    /** Expiracao do token de redefinicao de senha. */
+    @Column(name = "reset_token_expira_em")
+    private OffsetDateTime resetTokenExpiraEm;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 

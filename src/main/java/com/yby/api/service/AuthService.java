@@ -2,8 +2,11 @@ package com.yby.api.service;
 
 import com.yby.api.config.AppSecurityProperties;
 import com.yby.api.dto.ChangePasswordRequestDTO;
+import com.yby.api.dto.EsqueciSenhaRequestDTO;
+import com.yby.api.dto.EsqueciSenhaResponseDTO;
 import com.yby.api.dto.LoginRequestDTO;
 import com.yby.api.dto.LoginResponseDTO;
+import com.yby.api.dto.RedefinirSenhaRequestDTO;
 import com.yby.api.dto.UsuarioDTO;
 import com.yby.api.entity.Usuario;
 import com.yby.api.exception.BusinessException;
@@ -12,6 +15,8 @@ import com.yby.api.mapper.UsuarioMapper;
 import com.yby.api.repository.UsuarioRepository;
 import com.yby.api.security.AppUserDetails;
 import com.yby.api.security.JwtService;
+import java.time.OffsetDateTime;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -82,6 +87,55 @@ public class AuthService {
         }
 
         usuario.setSenhaHash(passwordEncoder.encode(request.novaSenha()));
+        usuario.setPrimeiroAcessoTrocaSenha(false);
+        usuarioRepository.save(usuario);
+    }
+
+    /** Validade do token de redefinicao de senha. */
+    private static final long RESET_TOKEN_TTL_MINUTOS = 30;
+
+    /**
+     * Inicia o fluxo "esqueci minha senha": gera um token de uso unico com validade curta.
+     *
+     * <p>A resposta e sempre generica para nao revelar se o e-mail existe (evita enumeracao de
+     * usuarios). Como nao ha servico de e-mail no ambiente, o token e devolvido na resposta para
+     * permitir a redefinicao; em producao seria enviado por e-mail.</p>
+     */
+    @Transactional
+    public EsqueciSenhaResponseDTO esqueciSenha(EsqueciSenhaRequestDTO request) {
+        String mensagem = "Se o e-mail informado estiver cadastrado, enviaremos instrucoes de redefinicao.";
+        String email = request.email().trim().toLowerCase();
+
+        return usuarioRepository.findByEmail(email)
+            .filter(Usuario::isAtivo)
+            .map(usuario -> {
+                String token = UUID.randomUUID().toString();
+                OffsetDateTime expiraEm = OffsetDateTime.now().plusMinutes(RESET_TOKEN_TTL_MINUTOS);
+                usuario.setResetToken(token);
+                usuario.setResetTokenExpiraEm(expiraEm);
+                usuarioRepository.save(usuario);
+                return new EsqueciSenhaResponseDTO(mensagem, token, expiraEm);
+            })
+            .orElseGet(() -> new EsqueciSenhaResponseDTO(mensagem, null, null));
+    }
+
+    /** Redefine a senha a partir de um token valido e nao expirado, invalidando-o em seguida. */
+    @Transactional
+    public void redefinirSenha(RedefinirSenhaRequestDTO request) {
+        Usuario usuario = usuarioRepository.findByResetToken(request.token())
+            .orElseThrow(() -> new BusinessException(HttpStatus.BAD_REQUEST, "Token de redefinicao invalido"));
+
+        if (usuario.getResetTokenExpiraEm() == null
+            || usuario.getResetTokenExpiraEm().isBefore(OffsetDateTime.now())) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "Token de redefinicao expirado");
+        }
+        if (!usuario.isAtivo()) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "Usuario desativado");
+        }
+
+        usuario.setSenhaHash(passwordEncoder.encode(request.novaSenha()));
+        usuario.setResetToken(null);
+        usuario.setResetTokenExpiraEm(null);
         usuario.setPrimeiroAcessoTrocaSenha(false);
         usuarioRepository.save(usuario);
     }

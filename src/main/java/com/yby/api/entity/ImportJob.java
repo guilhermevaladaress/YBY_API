@@ -13,6 +13,8 @@ import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -34,6 +36,7 @@ public class ImportJob {
     @Column(name = "registros_inseridos", nullable = false)
     private Integer registrosInseridos = 0;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String erros;
 

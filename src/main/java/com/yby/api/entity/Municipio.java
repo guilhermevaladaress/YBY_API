@@ -17,6 +17,9 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -44,6 +47,7 @@ public class Municipio {
     @Column(name = "area_ha", precision = 18, scale = 2)
     private BigDecimal areaHa;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "geojson_polygon", columnDefinition = "jsonb")
     private String geojsonPolygon;
 
@@ -74,6 +78,7 @@ public class Municipio {
 
     /** Indica plano de acao ambiental ativo; reduz o risco preditivo (RN-108-A, fator x0,9). */
     @Column(name = "plano_acao_ativo", nullable = false)
+    @ColumnDefault("false")
     private boolean planoAcaoAtivo = false;
 
     @Column(name = "ultima_atualizacao")

@@ -29,13 +29,16 @@ public class DesmatamentoService {
     private final DesmatamentoRepository desmatamentoRepository;
     private final ImportJobRepository importJobRepository;
     private final DesmatamentoMapper desmatamentoMapper;
+    private final AuditService auditService;
 
     public DesmatamentoService(DesmatamentoRepository desmatamentoRepository,
                                ImportJobRepository importJobRepository,
-                               DesmatamentoMapper desmatamentoMapper) {
+                               DesmatamentoMapper desmatamentoMapper,
+                               AuditService auditService) {
         this.desmatamentoRepository = desmatamentoRepository;
         this.importJobRepository = importJobRepository;
         this.desmatamentoMapper = desmatamentoMapper;
+        this.auditService = auditService;
     }
 
     public List<DesmatamentoDTO> historico(Long municipioId, String fonte, LocalDate dataInicio, LocalDate dataFim) {
@@ -82,6 +85,9 @@ public class DesmatamentoService {
         job.setStatus(ImportJobStatus.PROCESSANDO);
         job.setRegistrosInseridos(0);
         ImportJob saved = importJobRepository.save(job);
+
+        // RN-007: escrita disparada por GESTOR deve gerar auditoria.
+        auditService.registrarEscritaGestor("IMPORTAR", "import_jobs", String.valueOf(saved.getId()), saved.getTipo());
 
         CompletableFuture.runAsync(() -> concluirImportacaoMock(saved.getId()));
         return saved.getId();

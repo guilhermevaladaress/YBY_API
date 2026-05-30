@@ -35,6 +35,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.badRequest().body(problem);
     }
 
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ProblemDetail> handleAccessDenied(
+        org.springframework.security.access.AccessDeniedException ex, HttpServletRequest request) {
+        ProblemDetail problem = buildProblem(HttpStatus.FORBIDDEN,
+            "Acesso negado: permissao insuficiente", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problem);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleUnhandled(Exception ex, HttpServletRequest request) {
         ProblemDetail problem = buildProblem(HttpStatus.INTERNAL_SERVER_ERROR,

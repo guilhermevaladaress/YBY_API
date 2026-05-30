@@ -38,10 +38,14 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authenticationProvider(authenticationProvider())
             .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/api/v1/auth/login", "/api/v1/public/**",
+                .requestMatchers("/api/v1/auth/login", "/api/v1/auth/esqueci-senha",
+                    "/api/v1/auth/redefinir-senha", "/api/v1/public/**",
                     "/swagger-ui/**", "/swagger-ui.html", "/api-docs/**").permitAll()
                 .anyRequest().authenticated()
             )
+            // RN-008 / secao 7: 401 para nao autenticado, 403 para autenticado sem permissao.
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(restAuthenticationEntryPoint()))
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -57,6 +61,18 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    /** Retorna 401 (Problem Details RFC 7807) quando a requisicao nao esta autenticada. */
+    @Bean
+    public org.springframework.security.web.AuthenticationEntryPoint restAuthenticationEntryPoint() {
+        return (request, response, authException) -> {
+            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/problem+json");
+            response.getWriter().write(
+                "{\"type\":\"about:blank\",\"title\":\"Unauthorized\",\"status\":401,"
+                    + "\"detail\":\"Autenticacao necessaria\",\"instance\":\"" + request.getRequestURI() + "\"}");
+        };
     }
 
     @Bean

@@ -1,8 +1,11 @@
 package com.yby.api.controller;
 
 import com.yby.api.dto.ChangePasswordRequestDTO;
+import com.yby.api.dto.EsqueciSenhaRequestDTO;
+import com.yby.api.dto.EsqueciSenhaResponseDTO;
 import com.yby.api.dto.LoginRequestDTO;
 import com.yby.api.dto.LoginResponseDTO;
+import com.yby.api.dto.RedefinirSenhaRequestDTO;
 import com.yby.api.dto.UsuarioDTO;
 import com.yby.api.service.AuthService;
 import jakarta.validation.Valid;
@@ -28,6 +31,17 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/esqueci-senha")
+    public ResponseEntity<EsqueciSenhaResponseDTO> esqueciSenha(@Valid @RequestBody EsqueciSenhaRequestDTO request) {
+        return ResponseEntity.ok(authService.esqueciSenha(request));
+    }
+
+    @PostMapping("/redefinir-senha")
+    public ResponseEntity<Void> redefinirSenha(@Valid @RequestBody RedefinirSenhaRequestDTO request) {
+        authService.redefinirSenha(request);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/me")
