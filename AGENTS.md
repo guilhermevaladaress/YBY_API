@@ -19,6 +19,9 @@ Este arquivo e a referencia operacional para desenvolvimento.
 Quando houver conflito entre implementacao e regras abaixo, seguir este documento.
 Nao inferir regra de negocio fora do que esta definido aqui sem registrar pendencia.
 
+Documento complementar (extensoes inovadoras):
+- `docs/REGRAS_NEGOCIO_INOVACAO.md`
+
 ---
 
 ## 3) Stack obrigatoria

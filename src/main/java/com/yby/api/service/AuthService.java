@@ -13,7 +13,6 @@ import com.yby.api.repository.UsuarioRepository;
 import com.yby.api.security.AppUserDetails;
 import com.yby.api.security.JwtService;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +23,6 @@ public class AuthService {
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
-    // authenticationManager removed: using direct password checks in login()
     private final UsuarioMapper usuarioMapper;
     private final AppSecurityProperties appSecurityProperties;
 
