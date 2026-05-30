@@ -2,17 +2,23 @@ package com.yby.api.controller;
 
 import com.yby.api.dto.AlocacaoRequestDTO;
 import com.yby.api.dto.AlocacaoResponseDTO;
+import com.yby.api.dto.CarbonoEvitadoDTO;
 import com.yby.api.dto.DesperdicioInteligenteDTO;
 import com.yby.api.dto.EquidadeTerritorialDTO;
 import com.yby.api.dto.KpiMultidimensionalDTO;
+import com.yby.api.dto.ProjecaoDesmatamentoDTO;
 import com.yby.api.dto.RiscoPreditivoDTO;
+import com.yby.api.dto.RoiDesmatamentoEvitadoDTO;
 import com.yby.api.dto.SemaforoBiomaDTO;
 import com.yby.api.dto.TendenciaDesmatamentoDTO;
 import com.yby.api.service.inteligencia.AlocacaoService;
+import com.yby.api.service.inteligencia.CarbonoEvitadoService;
 import com.yby.api.service.inteligencia.DesperdicioInteligenteService;
 import com.yby.api.service.inteligencia.EquidadeService;
 import com.yby.api.service.inteligencia.KpiMultidimensionalService;
+import com.yby.api.service.inteligencia.ProjecaoDesmatamentoService;
 import com.yby.api.service.inteligencia.RiscoPreditivoService;
+import com.yby.api.service.inteligencia.RoiDesmatamentoEvitadoService;
 import com.yby.api.service.inteligencia.SemaforoBiomaService;
 import com.yby.api.service.inteligencia.TendenciaService;
 import jakarta.validation.Valid;
@@ -44,6 +50,9 @@ public class InteligenciaController {
     private final DesperdicioInteligenteService desperdicioInteligenteService;
     private final EquidadeService equidadeService;
     private final AlocacaoService alocacaoService;
+    private final CarbonoEvitadoService carbonoEvitadoService;
+    private final ProjecaoDesmatamentoService projecaoDesmatamentoService;
+    private final RoiDesmatamentoEvitadoService roiDesmatamentoEvitadoService;
 
     public InteligenciaController(TendenciaService tendenciaService,
                                   KpiMultidimensionalService kpiMultidimensionalService,
@@ -51,7 +60,10 @@ public class InteligenciaController {
                                   RiscoPreditivoService riscoPreditivoService,
                                   DesperdicioInteligenteService desperdicioInteligenteService,
                                   EquidadeService equidadeService,
-                                  AlocacaoService alocacaoService) {
+                                  AlocacaoService alocacaoService,
+                                  CarbonoEvitadoService carbonoEvitadoService,
+                                  ProjecaoDesmatamentoService projecaoDesmatamentoService,
+                                  RoiDesmatamentoEvitadoService roiDesmatamentoEvitadoService) {
         this.tendenciaService = tendenciaService;
         this.kpiMultidimensionalService = kpiMultidimensionalService;
         this.semaforoBiomaService = semaforoBiomaService;
@@ -59,6 +71,9 @@ public class InteligenciaController {
         this.desperdicioInteligenteService = desperdicioInteligenteService;
         this.equidadeService = equidadeService;
         this.alocacaoService = alocacaoService;
+        this.carbonoEvitadoService = carbonoEvitadoService;
+        this.projecaoDesmatamentoService = projecaoDesmatamentoService;
+        this.roiDesmatamentoEvitadoService = roiDesmatamentoEvitadoService;
     }
 
     /** RN-101-A - Score de Prioridade com Tendencia. */
@@ -113,5 +128,33 @@ public class InteligenciaController {
     @PreAuthorize("hasRole('GESTOR')")
     public AlocacaoResponseDTO alocacao(@Valid @RequestBody AlocacaoRequestDTO request) {
         return alocacaoService.otimizar(request);
+    }
+
+    /** Carbono Evitado (avoided emissions) - nucleo do JREDD+. */
+    @GetMapping("/carbono-evitado/{municipioId}")
+    @PreAuthorize("hasAnyRole('GESTOR','SERVIDOR')")
+    public CarbonoEvitadoDTO carbonoEvitado(@PathVariable Long municipioId,
+                                            @RequestParam(required = false) Integer ano,
+                                            @RequestParam(required = false) BigDecimal preco) {
+        return carbonoEvitadoService.avaliar(municipioId, ano, preco);
+    }
+
+    /** Projecao de Desmatamento (tendencia historica -> proximos anos). */
+    @GetMapping("/projecao-desmatamento/{municipioId}")
+    @PreAuthorize("hasAnyRole('GESTOR','SERVIDOR')")
+    public ProjecaoDesmatamentoDTO projecaoDesmatamento(@PathVariable Long municipioId,
+                                                        @RequestParam(required = false) Integer horizonteAnos) {
+        return projecaoDesmatamentoService.avaliar(municipioId, horizonteAnos);
+    }
+
+    /** ROI de Desmatamento Evitado (financeiro: JREDD+ vs. conversao da area). */
+    @GetMapping("/roi-desmatamento-evitado/{municipioId}")
+    @PreAuthorize("hasAnyRole('GESTOR','SERVIDOR')")
+    public RoiDesmatamentoEvitadoDTO roiDesmatamentoEvitado(
+        @PathVariable Long municipioId,
+        @RequestParam(required = false) Integer ano,
+        @RequestParam(required = false) BigDecimal preco,
+        @RequestParam(required = false) BigDecimal valorAgropecuariaHaAno) {
+        return roiDesmatamentoEvitadoService.avaliar(municipioId, ano, preco, valorAgropecuariaHaAno);
     }
 }

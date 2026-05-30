@@ -83,4 +83,36 @@ class InteligenciaControllerIT extends AbstractApiIntegrationTest {
                 .content("{\"orcamentoTotal\":1000000.00,\"estrategia\":\"MAXIMO_KPI\"}"))
             .andExpect(status().isForbidden());
     }
+
+    @Test
+    @WithMockUser(roles = "SERVIDOR")
+    void carbonoEvitado_retorna200() throws Exception {
+        novoDesmatamento(municipio, LocalDate.of(ano - 2, 6, 1), new BigDecimal("100.0"), FonteDesmatamento.PRODES);
+        novoDesmatamento(municipio, LocalDate.of(ano, 6, 1), new BigDecimal("40.0"), FonteDesmatamento.PRODES);
+
+        mockMvc.perform(get("/api/v1/inteligencia/carbono-evitado/" + municipio.getId())
+                .param("ano", String.valueOf(ano)))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "SERVIDOR")
+    void projecaoDesmatamento_retorna200() throws Exception {
+        novoDesmatamento(municipio, LocalDate.of(ano - 2, 6, 1), new BigDecimal("10.0"), FonteDesmatamento.PRODES);
+        novoDesmatamento(municipio, LocalDate.of(ano - 1, 6, 1), new BigDecimal("20.0"), FonteDesmatamento.PRODES);
+
+        mockMvc.perform(get("/api/v1/inteligencia/projecao-desmatamento/" + municipio.getId()))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "SERVIDOR")
+    void roiDesmatamentoEvitado_retorna200() throws Exception {
+        novoDesmatamento(municipio, LocalDate.of(ano - 2, 6, 1), new BigDecimal("100.0"), FonteDesmatamento.PRODES);
+        novoDesmatamento(municipio, LocalDate.of(ano, 6, 1), new BigDecimal("40.0"), FonteDesmatamento.PRODES);
+
+        mockMvc.perform(get("/api/v1/inteligencia/roi-desmatamento-evitado/" + municipio.getId())
+                .param("ano", String.valueOf(ano)))
+            .andExpect(status().isOk());
+    }
 }
