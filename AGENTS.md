@@ -1,374 +1,344 @@
 # AGENTS.md - JREDD+ Intelligence Back-End
 
-## Objetivo do projeto
+## 1) Objetivo
+
+Este repositorio contem o back-end do JREDD+ Intelligence.
+O objetivo e expor API REST para decisao de investimento ambiental no Tocantins, com foco em:
+
+1. priorizacao de municipios para investimento;
+2. medicao de retorno por real investido;
+3. identificacao de desperdicio de gasto;
+4. analise de risco e prontidao para investir;
+5. prestacao de contas auditavel.
+
+---
+
+## 2) Fonte de verdade do dominio
+
+Este arquivo e a referencia operacional para desenvolvimento.
+Quando houver conflito entre implementacao e regras abaixo, seguir este documento.
+Nao inferir regra de negocio fora do que esta definido aqui sem registrar pendencia.
+
+---
+
+## 3) Stack obrigatoria
+
+- Java + Spring Boot
+- Spring Web
+- Spring Data JPA
+- Spring Security + JWT
+- PostgreSQL (preferencialmente Supabase free)
+- Flyway
+- Springdoc / Swagger UI
+- Bean Validation
+
+Nao trocar stack sem justificativa tecnica clara.
+
+---
+
+## 4) Arquitetura obrigatoria
+
+Organizar em camadas:
+
+- `controller` (ou `resource`): HTTP, sem regra de negocio pesada
+- `service`: regras de negocio e calculos
+- `repository`: acesso a dados
+- `entity` (ou `model`): entidades JPA
+- `dto`: contratos de entrada/saida
+- `mapper`: conversoes
+- `security`: JWT/autenticacao/autorizacao
+- `config`: configuracoes
+- `exception`: tratamento global
+- `integration`: fontes externas
+- `job` (ou `scheduler`): cargas periodicas
+
+Migrations Flyway devem ficar em `src/main/resources/db/migration`.
+
+---
+
+## 5) Regras de negocio explicitas (obrigatorias)
+
+### 5.1 Regras transversais
+
+- `RN-001`: Toda rota deve usar prefixo `/api/v1`.
+- `RN-002`: Perfis validos: `GESTOR` e `SERVIDOR`.
+- `RN-003`: Roles no Spring Security: `ROLE_GESTOR` e `ROLE_SERVIDOR`.
+- `RN-004`: JWT stateless no header `Authorization: Bearer <token>`.
+- `RN-005`: Tempo de expiracao do token: `8 horas` (`expiresIn = 28800`).
+- `RN-006`: Endpoint publico inicial: apenas `POST /api/v1/auth/login`.
+- `RN-007`: Toda operacao de escrita por `GESTOR` (POST/PUT/PATCH/DELETE) deve gerar auditoria em `audit_log`.
+- `RN-008`: Erros devem seguir RFC 7807 (Problem Details) sempre que possivel.
+- `RN-009`: Datas devem usar ISO 8601 (`yyyy-MM-dd` e timestamp ISO completo).
+- `RN-010`: Nao expor entidade JPA diretamente em controller. Sempre usar DTO.
+- `RN-011`: Nunca retornar `senha_hash` em respostas.
+- `RN-012`: Senha sempre com BCrypt, nunca texto puro.
+- `RN-013`: CORS restritivo em producao; `*` apenas em desenvolvimento.
+- `RN-014`: Endpoints de mapa devem retornar `Content-Type: application/geo+json`.
+- `RN-015`: Paginacao padrao Spring (`page` 0-based, `size`, `totalElements`, `totalPages`, `content`).
+
+### 5.2 Regras de calculo e classificacao
+
+- `RN-100`: `score_prioridade` deve variar de `0` a `100`.
+- `RN-101`: Score do municipio combina os fatores com pesos:
+  - desmatamento recente: `40%`
+  - eficiencia de gasto: `30%`
+  - irregularidades CAR: `20%`
+  - area elegivel: `10%`
+- `RN-102`: Se algum fator estiver indisponivel, calcular score apenas com fatores disponiveis e reponderar proporcionalmente (sem zerar municipio por falta de uma fonte).
+- `RN-103`: KPI central: `kpi_retorno = resultado_ambiental / gasto_publico`.
+- `RN-104`: Proibido dividir por zero. Se `gasto_publico <= 0` ou nulo, retornar KPI seguro (valor nulo ou convencao definida pelo DTO), sem excecao 500.
+- `RN-105`: Semaforo permitido: `verde`, `amarelo`, `vermelho`.
+- `RN-106`: Semaforo de prontidao:
+  - `verde`: baixo risco, sem bloqueio ambiental/legal relevante
+  - `amarelo`: pendencias resolviveis
+  - `vermelho`: alto risco (ex.: embargo ativo, sobreposicao critica, historico grave de desperdicio)
+- `RN-107`: Alerta de desperdicio deve marcar municipio com:
+  - `gasto_publico` acima da mediana estadual, e
+  - `resultado_ambiental` abaixo da mediana estadual
+- `RN-108`: Nota de risco deve variar de `0` a `10` e considerar, no minimo:
+  - embargos IBAMA
+  - sobreposicoes com TI/FUNAI
+  - sobreposicoes com UC/ICMBio
+  - irregularidades/cancelamentos no CAR (SICAR)
+- `RN-109`: Analise de risco deve informar pendencias de forma explicita e acionavel.
+
+### 5.3 Regras de dados (modelo minimo)
+
+Tabelas principais:
+
+- `municipios`
+- `indicadores`
+- `desmatamento`
+- `alertas`
+- `usuarios`
+- `audit_log`
 
-Este repositório contém o back-end do JREDD+ Intelligence, responsável por expor uma API REST para o front-end, aplicar regras de negócio, calcular indicadores ambientais, consultar dados por município, autenticar usuários e integrar fontes externas como INPE, MapBiomas, SICAR, IBGE e bases estaduais.
+Regras de coluna e dominio:
+
+- `municipios.codigo_ibge`: obrigatorio, 7 caracteres.
+- `municipios.score_prioridade`: numerico entre 0 e 100.
+- `municipios.semaforo`: `verde|amarelo|vermelho`.
+- `municipios.geojson_polygon`: JSONB com poligono GeoJSON valido.
+- `indicadores`: chave logica por (`municipio_id`, `ano`) para evitar duplicidade anual.
+- `desmatamento.fonte`: `DETER|PRODES`.
+- `alertas.tipo`: `EMBARGO|SOBREPOSICAO|CAR_IRREGULAR|MANUAL` (ou equivalente mapeado no enum).
+- `alertas.gravidade`: `BAIXA|MEDIA|ALTA`.
+- `usuarios.email`: unico.
+- `usuarios.role`: `GESTOR|SERVIDOR`.
+- `usuarios.ativo`: booleano.
+
+### 5.4 Regras de integracao externa
 
-O projeto deve priorizar clareza, organização, segurança e rapidez de entrega, pois será usado em contexto de hackathon.
+Integracoes devem ficar em `service` dedicado, nunca em controller.
+Fontes usadas pelo dominio:
+
+- INPE TerraBrasilis (PRODES/DETER)
+- MapBiomas
+- SICAR
+- CIGMA/SEMARH-TO
+- IBGE Geociencias
+- SEEG
+- Geoportal SEPLAN-TO
+- Base dos Dados (uso pontual)
+- IBAMA (embargos)
+- FUNAI (Terras Indigenas)
+- ICMBio (Unidades de Conservacao)
+- Portal da Transparencia (gasto publico)
 
-## Stack principal
+Regras operacionais:
+
+- PRODES: carga anual.
+- DETER: carga diaria via `@Scheduled` (quando habilitado no ambiente).
+- Em hackathon, permitido mock/carga CSV-JSON manual, mantendo contrato de API igual ao real.
+- Nao rodar integracao pesada automaticamente em testes.
 
-* Java
-* Spring Boot
-* Spring Web
-* Spring Data JPA
-* Spring Security
-* JWT
-* PostgreSQL, preferencialmente Supabase free
-* Flyway para migrations
-* Springdoc / Swagger UI
-* Bean Validation
-* Lombok, se já estiver configurado no projeto
+### 5.5 Regras de auditoria
 
-Não trocar a stack sem necessidade.
+Toda escrita de `GESTOR` deve registrar:
 
-## Arquitetura esperada
+- usuario executor
+- acao
+- entidade afetada
+- timestamp
+- payload relevante
 
-Organizar o código em camadas:
+Se auditoria completa nao estiver finalizada, manter estrutura pronta e contrato de log previsto.
 
-* `controller` ou `resource`: recebe requisições HTTP e retorna DTOs
-* `service`: concentra regras de negócio
-* `repository`: acesso ao banco via Spring Data JPA
-* `entity` ou `model`: entidades JPA
-* `dto`: objetos de entrada e saída
-* `mapper`: conversões entre entidades e DTOs, se necessário
-* `security`: JWT, filtros, autenticação e autorização
-* `config`: configurações gerais
-* `exception`: tratamento global de erros
-* `integration`: serviços de integração externa
-* `job` ou `scheduler`: cargas agendadas
-* `migration`: scripts Flyway em `src/main/resources/db/migration`
+---
 
-Evitar regra de negócio dentro de controller.
+## 6) Contratos de endpoints e regras especificas
 
-## Convenções de API
+## 6.1 Municipios
 
-Todas as rotas devem seguir o prefixo:
+- `GET /api/v1/municipios/ranking`
+  - roles: `GESTOR` e `SERVIDOR`
+  - query: `page` (default 0), `size` (default 50), `ordenar` (`score|nome|area`), `ordem` (`desc|asc`)
+  - retorno: lista paginada com `id,nome,codigoIbge,scorePrioridade,semaforo,areaHa,kpiRetorno`
 
-`/api/v1`
+- `GET /api/v1/municipios/geojson`
+  - roles: `GESTOR` e `SERVIDOR`
+  - query opcional: `semaforo=verde|amarelo|vermelho`
+  - retorno: `FeatureCollection` GeoJSON
 
-Usar os status HTTP corretamente:
+- `GET /api/v1/municipios/{id}`
+  - roles: `GESTOR` e `SERVIDOR`
+  - retorno: detalhe completo com score, semaforo, notaRisco, KPI, pendencias, ultimaAtualizacao
 
-* `200 OK` para consultas e atualizações com retorno
-* `201 CREATED` para criação
-* `202 ACCEPTED` para processamento assíncrono
-* `204 NO CONTENT` para operações sem corpo de resposta
-* `400 BAD REQUEST` para erro de requisição
-* `401 UNAUTHORIZED` para ausência ou falha de autenticação
-* `403 FORBIDDEN` para usuário sem permissão
-* `404 NOT FOUND` para recurso inexistente
-* `409 CONFLICT` para conflito, como e-mail duplicado
-* `422 UNPROCESSABLE ENTITY` para validações de negócio
+- `PUT /api/v1/municipios/{id}`
+  - role: `GESTOR`
+  - uso: correcao/atualizacao manual de campos de municipio
+  - obrigatorio: auditar operacao
 
-Erros devem seguir o padrão RFC 7807 Problem Details quando possível.
+## 6.2 Indicadores e KPI
 
-## Autenticação e autorização
+- `GET /api/v1/indicadores/{municipioId}/kpi`
+  - roles: `GESTOR` e `SERVIDOR`
+  - query: `anoInicio`, `anoFim`
+  - retorno: KPI agregado do periodo
+
+- `GET /api/v1/indicadores/{municipioId}/historico`
+  - roles: `GESTOR` e `SERVIDOR`
+  - query default: `anoInicio = anoAtual-5`, `anoFim = anoAtual`
+  - retorno: serie anual (`gastoPublico`, `resultadoAmbiental`, `kpiRetorno`)
 
-O sistema possui dois perfis:
+- `POST /api/v1/indicadores`
+  - role: `GESTOR`
+  - regra: inserir ou atualizar indicador anual (upsert por municipio+ano)
+
+## 6.3 Desmatamento
+
+- `GET /api/v1/desmatamento/{municipioId}/historico`
+  - roles: `GESTOR` e `SERVIDOR`
+  - query: `fonte=PRODES|DETER|ALL` (default `ALL`), `dataInicio`, `dataFim`
 
-* `GESTOR`
-* `SERVIDOR`
+- `GET /api/v1/desmatamento/resumo`
+  - roles: `GESTOR` e `SERVIDOR`
+  - query obrigatoria: `ano`
+  - retorno: total anual + breakdown por bioma e semaforo
 
-No Spring Security, usar roles:
+- `POST /api/v1/desmatamento/importar`
+  - role: `GESTOR`
+  - processamento assincrono com retorno `jobId`
+  - status inicial esperado: `PROCESSANDO`
 
-* `ROLE_GESTOR`
-* `ROLE_SERVIDOR`
+- `GET /api/v1/desmatamento/importar/{jobId}/status`
+  - role: `GESTOR`
+  - status permitidos: `PROCESSANDO|CONCLUIDO|ERRO`
+  - retorno inclui `registrosInseridos`, `erros[]`, `finalizadoEm`
 
-Regras:
+## 6.4 Alertas
 
-* `GESTOR` pode consultar dados, cadastrar usuários, importar bases, atualizar dados, administrar alertas e gerar relatórios.
-* `SERVIDOR` pode apenas consultar mapa, ranking, detalhe de município, histórico de desmatamento e relatórios permitidos.
+- `GET /api/v1/alertas/desperdicio`
+  - roles: `GESTOR` e `SERVIDOR`
+  - query: `ano` (default ano atual), `limite` (default 10)
+  - regra: aplicar RN-107
 
-Usar anotações como:
+- `GET /api/v1/alertas/risco/{municipioId}`
+  - roles: `GESTOR` e `SERVIDOR`
+  - regra: aplicar RN-108 e RN-109
 
-```java
-@PreAuthorize("hasRole('GESTOR')")
-@PreAuthorize("hasAnyRole('GESTOR', 'SERVIDOR')")
-```
+- `POST /api/v1/alertas`
+  - role: `GESTOR`
+  - uso: cadastro/atualizacao manual de alerta
 
-O JWT deve ser stateless e enviado no header:
+## 6.5 Autenticacao
 
-```http
-Authorization: Bearer <token>
-```
+- `POST /api/v1/auth/login` (publico)
+- `GET /api/v1/auth/me` (autenticado)
+- `PATCH /api/v1/auth/senha` (autenticado)
 
-## Endpoints principais
+Regras adicionais:
 
-Implementar seguindo os contratos planejados:
+- troca de senha deve validar senha atual;
+- resposta de alteracao de senha: `204 No Content`.
 
-### Municípios
+## 6.6 Administracao (somente Gestor)
 
-* `GET /api/v1/municipios/ranking`
-* `GET /api/v1/municipios/geojson`
-* `GET /api/v1/municipios/{id}`
-* `PUT /api/v1/municipios/{id}` somente `GESTOR`
+- `GET /api/v1/admin/usuarios`
+- `POST /api/v1/admin/usuarios`
+- `PATCH /api/v1/admin/usuarios/{id}/status`
+- `POST /api/v1/admin/relatorio`
 
-### Indicadores e KPI
+Regras adicionais:
 
-* `GET /api/v1/indicadores/{municipioId}/kpi`
-* `GET /api/v1/indicadores/{municipioId}/historico`
-* `POST /api/v1/indicadores` somente `GESTOR`
+- usuario novo: senha inicial aleatoria;
+- senha inicial deve ser trocada no primeiro acesso;
+- desativacao nao exclui historico (apenas altera status `ativo`).
 
-### Desmatamento
+---
 
-* `GET /api/v1/desmatamento/{municipioId}/historico`
-* `GET /api/v1/desmatamento/resumo`
-* `POST /api/v1/desmatamento/importar` somente `GESTOR`
-* `GET /api/v1/desmatamento/importar/{jobId}/status` somente `GESTOR`
+## 7) HTTP status obrigatorios
 
-### Alertas
+- `200 OK`: leitura/atualizacao com corpo
+- `201 Created`: criacao
+- `202 Accepted`: processamento assincrono
+- `204 No Content`: sucesso sem corpo
+- `400 Bad Request`: payload invalido/senha fraca
+- `401 Unauthorized`: sem autenticacao/token invalido
+- `403 Forbidden`: sem permissao
+- `404 Not Found`: recurso nao encontrado
+- `409 Conflict`: conflito de unicidade (ex.: email)
+- `422 Unprocessable Entity`: validacao de negocio
 
-* `GET /api/v1/alertas/desperdicio`
-* `GET /api/v1/alertas/risco/{municipioId}`
-* `POST /api/v1/alertas` somente `GESTOR`
+---
 
-### Autenticação
+## 8) DTOs minimos esperados
 
-* `POST /api/v1/auth/login`
-* `GET /api/v1/auth/me`
-* `PATCH /api/v1/auth/senha`
+- `MunicipioRankingDTO`
+- `MunicipioDetalheDTO`
+- `KpiDTO`
+- `IndicadorAnualDTO`
+- `DesmatamentoDTO`
+- `DesmatamentoResumoDTO`
+- `AlertaDTO`
+- `RiscoDTO`
+- `UsuarioDTO`
+- `RelatorioDTO`
+- `LoginRequestDTO`
+- `LoginResponseDTO`
 
-### Administração
+Validacoes de entrada via Bean Validation:
 
-* `GET /api/v1/admin/usuarios` somente `GESTOR`
-* `POST /api/v1/admin/usuarios` somente `GESTOR`
-* `PATCH /api/v1/admin/usuarios/{id}/status` somente `GESTOR`
-* `POST /api/v1/admin/relatorio` somente `GESTOR`
+- `@NotNull`
+- `@NotBlank`
+- `@Email`
+- `@PositiveOrZero`
+- `@Min`
+- `@Max`
 
-## Modelo de dados base
+---
 
-Considerar como tabelas principais:
+## 9) Flyway e banco
 
-* `municipios`
-* `indicadores`
-* `desmatamento`
-* `alertas`
-* `usuarios`
-* `audit_log`, para auditoria de escritas
+- criar migrations incrementais (`V1__...`, `V2__...`);
+- nao alterar migration ja aplicada;
+- para qualquer mudanca de schema, criar nova migration;
+- scripts em `src/main/resources/db/migration`.
 
-Campos importantes:
+---
 
-### municipios
+## 10) Definicao de pronto (checklist)
 
-* `id`
-* `codigo_ibge`
-* `nome`
-* `area_ha`
-* `score_prioridade`
-* `semaforo`
-* `geojson_polygon`
+Antes de finalizar qualquer tarefa:
 
-### indicadores
+1. projeto compila;
+2. endpoints seguem `/api/v1`;
+3. controle de acesso `GESTOR/SERVIDOR` aplicado corretamente;
+4. DTOs nao vazam dados sensiveis;
+5. regras RN-100+ (score/KPI/semaforo/risco/desperdicio) respeitadas;
+6. migrations Flyway corretas;
+7. auditoria de escrita por GESTOR presente ou preparada;
+8. testes relevantes atualizados (service de score/KPI, auth, autorizacao, validacoes).
 
-* `id`
-* `municipio_id`
-* `ano`
-* `gasto_publico`
-* `resultado_ambiental`
-* `kpi_retorno`
+---
 
-### desmatamento
+## 11) Modo de trabalho neste repositorio
 
-* `id`
-* `municipio_id`
-* `data`
-* `area_desmatada_ha`
-* `fonte`
+Ao receber tarefa:
 
-### alertas
-
-* `id`
-* `municipio_id`
-* `tipo`
-* `gravidade`
-* `ativo`
-
-### usuarios
-
-* `id`
-* `email`
-* `senha_hash`
-* `role`
-* `ativo`
-
-## Regras de negócio importantes
-
-O score de prioridade do município vai de 0 a 100 e deve considerar, quando os dados existirem:
-
-* desmatamento recente: 40%
-* eficiência de gasto: 30%
-* irregularidades CAR: 20%
-* área elegível: 10%
-
-O KPI de retorno deve seguir a ideia:
-
-```text
-kpiRetorno = resultadoAmbiental / gastoPublico
-```
-
-Evitar divisão por zero. Quando `gastoPublico` for zero ou nulo, tratar de forma segura.
-
-O semáforo deve ser representado por:
-
-* `verde`
-* `amarelo`
-* `vermelho`
-
-## DTOs e validação
-
-Não expor entidades JPA diretamente nos controllers.
-
-Criar DTOs para entrada e saída, por exemplo:
-
-* `MunicipioRankingDTO`
-* `MunicipioDetalheDTO`
-* `KpiDTO`
-* `IndicadorAnualDTO`
-* `DesmatamentoDTO`
-* `DesmatamentoResumoDTO`
-* `AlertaDTO`
-* `RiscoDTO`
-* `UsuarioDTO`
-* `RelatorioDTO`
-* `LoginRequestDTO`
-* `LoginResponseDTO`
-
-Usar Bean Validation em DTOs de entrada:
-
-* `@NotNull`
-* `@NotBlank`
-* `@Email`
-* `@PositiveOrZero`
-* `@Min`
-* `@Max`
-
-## Banco de dados e migrations
-
-Usar Flyway.
-
-Criar migrations em:
-
-```text
-src/main/resources/db/migration
-```
-
-Seguir o padrão:
-
-```text
-V1__create_initial_tables.sql
-V2__insert_seed_data.sql
-```
-
-Não alterar migrations antigas depois de aplicadas. Criar nova migration para mudanças.
-
-## Segurança
-
-Nunca salvar senha em texto puro.
-
-Usar BCrypt para `senha_hash`.
-
-Não retornar `senha_hash` em nenhum DTO.
-
-Endpoints administrativos devem exigir `GESTOR`.
-
-Endpoints públicos devem ser mínimos. Inicialmente, apenas login deve ser público.
-
-## Auditoria
-
-Toda operação de escrita feita por `GESTOR` deve ser preparada para gerar log de auditoria:
-
-* usuário
-* ação
-* entidade afetada
-* timestamp
-* payload relevante
-
-Caso a auditoria completa não seja implementada de início, deixar estrutura preparada para evolução.
-
-## Integrações externas
-
-Implementar integrações como services isolados, nunca dentro dos controllers.
-
-Exemplos:
-
-* `InpeTerraBrasilisService`
-* `MapBiomasService`
-* `SicarService`
-* `IbgeGeoService`
-* `SeegService`
-
-Durante o hackathon, se a integração real for demorada, criar serviços com dados mockados ou carga manual por CSV/JSON, mas manter a estrutura limpa para troca futura.
-
-## Jobs agendados
-
-Cargas periódicas devem ficar em classes próprias usando `@Scheduled`.
-
-Exemplo:
-
-```java
-@Scheduled(cron = "0 0 6 * * *")
-public void cargaDiariaDeter() {
-    // carga diária
-}
-```
-
-Não executar integrações pesadas automaticamente em ambiente de teste.
-
-## Swagger
-
-Manter a documentação da API disponível em desenvolvimento via Swagger UI.
-
-Documentar controllers com nomes e descrições claras quando possível.
-
-## Estilo de código
-
-* Código simples e direto.
-* Nomes em português são permitidos para domínio do projeto.
-* Evitar abreviações confusas.
-* Não criar abstrações desnecessárias.
-* Não duplicar regra de negócio.
-* Preferir métodos pequenos e legíveis.
-* Não misturar responsabilidades.
-* Evitar comentários óbvios; comentar apenas regra de negócio relevante.
-
-## Testes
-
-Quando criar ou alterar regra importante, adicionar testes quando viável.
-
-Priorizar testes para:
-
-* services de cálculo de score
-* KPI
-* autenticação
-* autorização por perfil
-* endpoints principais
-* validações de DTO
-
-Se o projeto já tiver padrão de testes, seguir o padrão existente.
-
-## Antes de finalizar uma tarefa
-
-Antes de considerar uma tarefa pronta:
-
-1. Verificar se o projeto compila.
-2. Verificar se não há erro óbvio de importação.
-3. Conferir se endpoints seguem `/api/v1`.
-4. Conferir se permissões `GESTOR` e `SERVIDOR` foram aplicadas corretamente.
-5. Conferir se DTOs não expõem dados sensíveis.
-6. Conferir se migrations estão no padrão Flyway.
-7. Conferir se o código novo segue a arquitetura em camadas.
-
-## Como trabalhar neste projeto
-
-Ao receber uma tarefa:
-
-1. Leia este `AGENTS.md`.
-2. Verifique a estrutura atual do projeto antes de criar arquivos novos.
-3. Siga os padrões já existentes.
-4. Faça mudanças pequenas e coesas.
-5. Explique no final o que foi alterado.
-6. Informe qualquer pendência ou suposição feita.
-
-Não invente endpoints fora do escopo sem avisar.
-Não alterar decisões principais de arquitetura sem motivo claro.
-Não remover código existente sem confirmar que ele não é usado.
+1. ler este `AGENTS.md`;
+2. mapear impacto em controller/service/repository/dto;
+3. implementar em mudancas pequenas e coesas;
+4. documentar suposicoes quando houver lacuna;
+5. nao inventar endpoint fora deste escopo sem alinhamento;
+6. nao alterar arquitetura principal sem motivo claro.
