@@ -1,102 +1,73 @@
 package com.yby.api.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.ConstraintViolationException;
 import java.net.URI;
 import java.time.OffsetDateTime;
-import java.util.List;
-import org.springframework.dao.DataIntegrityViolationException;
+import java.util.Map;
+import java.util.stream.Collectors;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 @RestControllerAdvice
-public class GlobalExceptionHandler {
-
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ProblemDetail> handleNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
-        return build(HttpStatus.NOT_FOUND, "Recurso nao encontrado", ex.getMessage(), request, null);
-    }
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ProblemDetail> handleBusiness(BusinessException ex, HttpServletRequest request) {
-        return build(HttpStatus.UNPROCESSABLE_ENTITY, "Erro de regra de negocio", ex.getMessage(), request, null);
+        ProblemDetail problem = buildProblem(ex.getStatus(), ex.getMessage(), request.getRequestURI());
+        return ResponseEntity.status(ex.getStatus()).body(problem);
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ProblemDetail> handleValidation(
-        MethodArgumentNotValidException ex,
-        HttpServletRequest request
-    ) {
-        List<String> errors = ex.getBindingResult()
-            .getAllErrors()
-            .stream()
-            .map(error -> {
-                if (error instanceof FieldError fieldError) {
-                    return fieldError.getField() + ": " + fieldError.getDefaultMessage();
-                }
-                return error.getDefaultMessage();
-            })
-            .toList();
-        return build(HttpStatus.BAD_REQUEST, "Payload invalido", "Verifique os campos enviados", request, errors);
-    }
-
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ProblemDetail> handleConstraint(
-        ConstraintViolationException ex,
-        HttpServletRequest request
-    ) {
-        List<String> errors = ex.getConstraintViolations().stream().map(v -> v.getPropertyPath() + ": " + v.getMessage()).toList();
-        return build(HttpStatus.BAD_REQUEST, "Parametro invalido", "Erro de validacao", request, errors);
-    }
-
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ProblemDetail> handleConflict(
-        DataIntegrityViolationException ex,
-        HttpServletRequest request
-    ) {
-        return build(HttpStatus.CONFLICT, "Conflito de dados", "Violacao de unicidade ou integridade", request, null);
-    }
-
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ProblemDetail> handleBadCredentials(
-        BadCredentialsException ex,
-        HttpServletRequest request
-    ) {
-        return build(HttpStatus.UNAUTHORIZED, "Nao autenticado", "Credenciais invalidas", request, null);
-    }
-
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ProblemDetail> handleForbidden(AccessDeniedException ex, HttpServletRequest request) {
-        return build(HttpStatus.FORBIDDEN, "Sem permissao", "Voce nao possui acesso a este recurso", request, null);
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ProblemDetail> handleTypeMismatch(MethodArgumentTypeMismatchException ex,
+                                                            HttpServletRequest request) {
+        ProblemDetail problem = buildProblem(HttpStatus.BAD_REQUEST,
+            "Parametro invalido: " + ex.getName(), request.getRequestURI());
+        return ResponseEntity.badRequest().body(problem);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ProblemDetail> handleGeneric(Exception ex, HttpServletRequest request) {
-        return build(HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno", ex.getMessage(), request, null);
+    public ResponseEntity<ProblemDetail> handleUnhandled(Exception ex, HttpServletRequest request) {
+        ProblemDetail problem = buildProblem(HttpStatus.INTERNAL_SERVER_ERROR,
+            "Erro interno inesperado", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problem);
     }
 
-    private ResponseEntity<ProblemDetail> build(
-        HttpStatus status,
-        String title,
-        String detail,
-        HttpServletRequest request,
-        List<String> errors
-    ) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
-        problem.setTitle(title);
-        problem.setType(URI.create("https://yby.api/problem/" + status.value()));
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
+                                                                  HttpHeaders headers,
+                                                                  HttpStatusCode status,
+                                                                  WebRequest request) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setTitle("Dados de entrada invalidos");
+        problem.setDetail("Corrija os campos informados e tente novamente.");
+        problem.setType(URI.create("https://yby.api/problems/validation-error"));
+
+        Map<String, String> fields = ex.getBindingResult().getFieldErrors().stream()
+            .collect(Collectors.toMap(FieldError::getField,
+                error -> error.getDefaultMessage() == null ? "valor invalido" : error.getDefaultMessage(),
+                (left, right) -> left));
+
         problem.setProperty("timestamp", OffsetDateTime.now());
-        problem.setProperty("path", request.getRequestURI());
-        if (errors != null && !errors.isEmpty()) {
-            problem.setProperty("errors", errors);
-        }
-        return ResponseEntity.status(status).body(problem);
+        problem.setProperty("fieldErrors", fields);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
+    }
+
+    private ProblemDetail buildProblem(HttpStatus status, String detail, String path) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
+        problem.setTitle(status.getReasonPhrase());
+        problem.setType(URI.create("https://yby.api/problems/" + status.value()));
+        problem.setInstance(URI.create(path));
+        problem.setProperty("timestamp", OffsetDateTime.now());
+        return problem;
     }
 }

@@ -1,21 +1,16 @@
 package com.yby.api.entity;
 
-import com.yby.api.entity.enums.AlertaTipo;
-import com.yby.api.entity.enums.Gravidade;
+import com.yby.api.entity.enums.Role;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,36 +18,31 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "alertas")
-public class Alerta {
+@Table(name = "usuarios")
+public class Usuario {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "municipio_id", nullable = false)
-    private Municipio municipio;
+    @Column(nullable = false)
+    private String nome;
+
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    @Column(name = "senha_hash", nullable = false)
+    private String senhaHash;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private AlertaTipo tipo;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Gravidade gravidade;
-
-    @Column(nullable = false, length = 1500)
-    private String descricao;
-
-    @Column(name = "acao_recomendada", nullable = false, length = 1500)
-    private String acaoRecomendada;
-
-    @Column(name = "data_alerta", nullable = false)
-    private LocalDate dataAlerta;
+    private Role role;
 
     @Column(nullable = false)
     private boolean ativo = true;
+
+    @Column(name = "primeiro_acesso_troca_senha", nullable = false)
+    private boolean primeiroAcessoTrocaSenha = true;
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
@@ -65,9 +55,6 @@ public class Alerta {
         OffsetDateTime now = OffsetDateTime.now();
         this.createdAt = now;
         this.updatedAt = now;
-        if (this.dataAlerta == null) {
-            this.dataAlerta = LocalDate.now();
-        }
     }
 
     @PreUpdate

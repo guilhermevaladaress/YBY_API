@@ -37,20 +37,23 @@ public class Indicador {
     @Column(nullable = false)
     private Integer ano;
 
-    @Column(name = "gasto_publico", precision = 14, scale = 2)
+    @Column(name = "gasto_publico", precision = 18, scale = 2)
     private BigDecimal gastoPublico;
 
-    @Column(name = "resultado_ambiental", precision = 14, scale = 2)
+    @Column(name = "resultado_ambiental", precision = 18, scale = 2)
     private BigDecimal resultadoAmbiental;
 
-    @Column(name = "eficiencia_gasto", precision = 6, scale = 2)
-    private BigDecimal eficienciaGasto;
+    @Column(name = "desmatamento_recente_factor", precision = 5, scale = 2)
+    private BigDecimal desmatamentoRecenteFactor;
 
-    @Column(name = "irregularidades_car")
-    private Integer irregularidadesCar;
+    @Column(name = "eficiencia_gasto_factor", precision = 5, scale = 2)
+    private BigDecimal eficienciaGastoFactor;
 
-    @Column(name = "area_elegivel_ha", precision = 14, scale = 2)
-    private BigDecimal areaElegivelHa;
+    @Column(name = "irregularidades_car_factor", precision = 5, scale = 2)
+    private BigDecimal irregularidadesCarFactor;
+
+    @Column(name = "area_elegivel_factor", precision = 5, scale = 2)
+    private BigDecimal areaElegivelFactor;
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
@@ -59,14 +62,14 @@ public class Indicador {
     private OffsetDateTime updatedAt;
 
     @PrePersist
-    void prePersist() {
-        var now = OffsetDateTime.now();
+    public void prePersist() {
+        OffsetDateTime now = OffsetDateTime.now();
         this.createdAt = now;
         this.updatedAt = now;
     }
 
     @PreUpdate
-    void preUpdate() {
+    public void preUpdate() {
         this.updatedAt = OffsetDateTime.now();
     }
 }

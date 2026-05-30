@@ -1,56 +1,61 @@
 package com.yby.api.security;
 
-import com.yby.api.entity.UserAccount;
+import com.yby.api.config.AppSecurityProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import java.nio.charset.StandardCharsets;
+import java.security.Key;
 import java.time.Instant;
 import java.util.Date;
-import javax.crypto.SecretKey;
-import org.springframework.beans.factory.annotation.Value;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 
 @Service
 public class JwtService {
 
-    private final SecretKey signingKey;
-    private final long expirationSeconds;
+    private final AppSecurityProperties appSecurityProperties;
 
-    public JwtService(
-        @Value("${app.jwt.secret:ZGV2LXNlY3JldC15YnktYXBpLXN1cGVyLXNlY3JldC0zMmJ5dGVzLQ==}") String jwtSecretBase64,
-        @Value("${app.jwt.expires-in-seconds:28800}") long expirationSeconds
-    ) {
-        this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecretBase64));
-        this.expirationSeconds = expirationSeconds;
+    public JwtService(AppSecurityProperties appSecurityProperties) {
+        this.appSecurityProperties = appSecurityProperties;
     }
 
-    public String generateToken(UserAccount user) {
+    public String generateToken(AppUserDetails userDetails) {
         Instant now = Instant.now();
+        Instant expiration = now.plusSeconds(appSecurityProperties.jwt().expiresInSeconds());
+
         return Jwts.builder()
-            .subject(user.getEmail())
-            .claim("role", user.getRole().name())
+            .subject(userDetails.getUsername())
             .issuedAt(Date.from(now))
-            .expiration(Date.from(now.plusSeconds(expirationSeconds)))
-            .signWith(signingKey)
+            .expiration(Date.from(expiration))
+            .claims(Map.of("role", userDetails.role(), "userId", userDetails.id()))
+            .signWith(getSigningKey(), SignatureAlgorithm.HS256)
             .compact();
     }
 
     public String extractUsername(String token) {
-        return extractClaims(token).getSubject();
+        return extractAllClaims(token).getSubject();
     }
 
-    public boolean isTokenValid(String token, String username) {
-        Claims claims = extractClaims(token);
-        boolean notExpired = claims.getExpiration().after(new Date());
-        return notExpired && claims.getSubject().equalsIgnoreCase(username);
+    public boolean isTokenValid(String token, AppUserDetails userDetails) {
+        String username = extractUsername(token);
+        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
     }
 
-    public long getExpirationSeconds() {
-        return expirationSeconds;
+    private boolean isTokenExpired(String token) {
+        return extractAllClaims(token).getExpiration().before(new Date());
     }
 
-    private Claims extractClaims(String token) {
-        return Jwts.parser().verifyWith(signingKey).build().parseSignedClaims(token).getPayload();
+    private Claims extractAllClaims(String token) {
+        return Jwts.parser()
+            .verifyWith((javax.crypto.SecretKey) getSigningKey())
+            .build()
+            .parseSignedClaims(token)
+            .getPayload();
+    }
+
+    private Key getSigningKey() {
+        return Keys.hmacShaKeyFor(appSecurityProperties.jwt().secret().getBytes(StandardCharsets.UTF_8));
     }
 }

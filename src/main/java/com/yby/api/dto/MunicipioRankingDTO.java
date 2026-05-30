@@ -1,6 +1,5 @@
 package com.yby.api.dto;
 
-import com.yby.api.entity.enums.Semaforo;
 import java.math.BigDecimal;
 
 public record MunicipioRankingDTO(
@@ -8,7 +7,7 @@ public record MunicipioRankingDTO(
     String nome,
     String codigoIbge,
     BigDecimal scorePrioridade,
-    Semaforo semaforo,
+    String semaforo,
     BigDecimal areaHa,
     BigDecimal kpiRetorno
 ) {

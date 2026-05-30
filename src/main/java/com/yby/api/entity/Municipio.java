@@ -15,8 +15,6 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -28,36 +26,63 @@ public class Municipio {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 120)
+    @Column(nullable = false)
     private String nome;
 
     @Column(name = "codigo_ibge", nullable = false, unique = true, length = 7)
     private String codigoIbge;
 
-    @Column(name = "area_ha", precision = 14, scale = 2)
-    private BigDecimal areaHa;
-
     @Column(name = "score_prioridade", precision = 5, scale = 2)
     private BigDecimal scorePrioridade;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 12)
+    @Column(nullable = false)
     private Semaforo semaforo = Semaforo.AMARELO;
 
+    @Column(name = "area_ha", precision = 18, scale = 2)
+    private BigDecimal areaHa;
+
     @Column(name = "geojson_polygon", columnDefinition = "jsonb")
-    @JdbcTypeCode(SqlTypes.JSON)
     private String geojsonPolygon;
 
-    @Column(name = "ultima_atualizacao", nullable = false)
+    @Column(name = "nota_risco", precision = 4, scale = 2)
+    private BigDecimal notaRisco;
+
+    @Column(name = "kpi_retorno", precision = 18, scale = 6)
+    private BigDecimal kpiRetorno;
+
+    @Column(name = "gasto_publico", precision = 18, scale = 2)
+    private BigDecimal gastoPublico;
+
+    @Column(name = "resultado_ambiental", precision = 18, scale = 2)
+    private BigDecimal resultadoAmbiental;
+
+    @Column(name = "pendencias_resumo", length = 2000)
+    private String pendenciasResumo;
+
+    @Column(name = "ultima_atualizacao")
     private OffsetDateTime ultimaAtualizacao;
 
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
+
     @PrePersist
-    void prePersist() {
-        this.ultimaAtualizacao = OffsetDateTime.now();
+    public void prePersist() {
+        OffsetDateTime now = OffsetDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+        if (this.ultimaAtualizacao == null) {
+            this.ultimaAtualizacao = now;
+        }
     }
 
     @PreUpdate
-    void preUpdate() {
-        this.ultimaAtualizacao = OffsetDateTime.now();
+    public void preUpdate() {
+        OffsetDateTime now = OffsetDateTime.now();
+        this.updatedAt = now;
+        this.ultimaAtualizacao = now;
     }
 }

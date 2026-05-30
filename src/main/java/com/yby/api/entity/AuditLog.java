@@ -5,7 +5,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import lombok.Getter;
@@ -21,26 +20,21 @@ public class AuditLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "usuario_email", nullable = false, length = 180)
+    @Column(name = "usuario_id", nullable = false)
+    private Long usuarioId;
+
+    @Column(name = "usuario_email", nullable = false)
     private String usuarioEmail;
 
-    @Column(nullable = false, length = 60)
+    @Column(nullable = false)
     private String acao;
 
-    @Column(nullable = false, length = 80)
-    private String entidade;
+    @Column(name = "entidade_afetada", nullable = false)
+    private String entidadeAfetada;
 
-    @Column(name = "entidade_id", length = 80)
-    private String entidadeId;
+    @Column(name = "evento_em", nullable = false)
+    private OffsetDateTime eventoEm;
 
-    @Column(name = "payload_relevante", columnDefinition = "TEXT")
-    private String payloadRelevante;
-
-    @Column(nullable = false)
-    private OffsetDateTime timestamp;
-
-    @PrePersist
-    void prePersist() {
-        this.timestamp = OffsetDateTime.now();
-    }
+    @Column(columnDefinition = "jsonb")
+    private String payload;
 }
