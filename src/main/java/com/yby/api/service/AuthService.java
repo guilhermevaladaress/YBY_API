@@ -14,7 +14,6 @@ import com.yby.api.security.AppUserDetails;
 import com.yby.api.security.JwtService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,30 +24,32 @@ public class AuthService {
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
-    private final AuthenticationManager authenticationManager;
+    // authenticationManager removed: using direct password checks in login()
     private final UsuarioMapper usuarioMapper;
     private final AppSecurityProperties appSecurityProperties;
 
     public AuthService(UsuarioRepository usuarioRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
-                       AuthenticationManager authenticationManager,
                        UsuarioMapper usuarioMapper,
                        AppSecurityProperties appSecurityProperties) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
-        this.authenticationManager = authenticationManager;
         this.usuarioMapper = usuarioMapper;
         this.appSecurityProperties = appSecurityProperties;
     }
 
     public LoginResponseDTO login(LoginRequestDTO request) {
         String email = request.email().trim().toLowerCase();
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, request.senha()));
 
         Usuario usuario = usuarioRepository.findByEmail(email)
             .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado"));
+
+        // Valida senha diretamente para evitar problemas com AuthenticationManager em alguns ambientes
+        if (!passwordEncoder.matches(request.senha(), usuario.getSenhaHash())) {
+            throw new org.springframework.security.authentication.BadCredentialsException("Credenciais invalidas");
+        }
 
         if (!usuario.isAtivo()) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "Usuario desativado");

@@ -42,6 +42,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problem);
     }
 
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<ProblemDetail> handleAuth(org.springframework.security.core.AuthenticationException ex,
+                                                   HttpServletRequest request) {
+        ProblemDetail problem = buildProblem(HttpStatus.UNAUTHORIZED,
+            "Credenciais invalidas", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(problem);
+    }
+
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
                                                                   HttpHeaders headers,
