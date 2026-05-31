@@ -4,6 +4,8 @@ import com.yby.api.dto.DashboardDTO;
 import com.yby.api.dto.ProjecaoCarbonoDTO;
 import com.yby.api.service.CreditoCarbonoService;
 import com.yby.api.service.DashboardService;
+import java.time.LocalDate;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,8 +42,11 @@ public class DashboardController {
     @PreAuthorize("hasAnyRole('GESTOR','SERVIDOR')")
     public ResponseEntity<ProjecaoCarbonoDTO> projecaoCarbono(
         @RequestParam(required = false) Integer ano,
-        @RequestParam(required = false) Long municipioId
+        @RequestParam(required = false) Long municipioId,
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataReferenciaCotacao
     ) {
-        return ResponseEntity.ok(creditoCarbonoService.projetarConsolidado(ano, municipioId));
+        return ResponseEntity.ok(
+            creditoCarbonoService.projetarConsolidado(ano, municipioId, dataReferenciaCotacao));
     }
 }
