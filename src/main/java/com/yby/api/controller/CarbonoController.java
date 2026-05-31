@@ -2,7 +2,9 @@ package com.yby.api.controller;
 
 import com.yby.api.dto.CarbonoHistoricoDTO;
 import com.yby.api.dto.CarbonoRegistroDTO;
+import com.yby.api.dto.SyncResultDTO;
 import com.yby.api.service.CarbonoService;
+import com.yby.api.service.EmissaoCarbonoSyncService;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
@@ -25,9 +27,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class CarbonoController {
 
     private final CarbonoService carbonoService;
+    private final EmissaoCarbonoSyncService emissaoCarbonoSyncService;
 
-    public CarbonoController(CarbonoService carbonoService) {
+    public CarbonoController(CarbonoService carbonoService,
+                            EmissaoCarbonoSyncService emissaoCarbonoSyncService) {
         this.carbonoService = carbonoService;
+        this.emissaoCarbonoSyncService = emissaoCarbonoSyncService;
     }
 
     @GetMapping("/historico/menores")
@@ -58,5 +63,12 @@ public class CarbonoController {
     @PreAuthorize("hasRole('GESTOR')")
     public ResponseEntity<CarbonoRegistroDTO> registrar(@Valid @RequestBody CarbonoRegistroDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(carbonoService.registrar(dto));
+    }
+
+    /** (Re)gera a serie SEEG de emissoes de um ano para todos os municipios (ingestao por GESTOR). */
+    @PostMapping("/sincronizar")
+    @PreAuthorize("hasRole('GESTOR')")
+    public ResponseEntity<SyncResultDTO> sincronizar(@RequestParam(required = false) Integer ano) {
+        return ResponseEntity.ok(emissaoCarbonoSyncService.sincronizarAno(ano));
     }
 }

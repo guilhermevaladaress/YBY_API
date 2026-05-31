@@ -39,6 +39,11 @@ public interface DesmatamentoRepository extends JpaRepository<Desmatamento, Long
     """, nativeQuery = true)
     java.math.BigDecimal findTotalByAno(@Param("ano") Integer ano);
 
+    /** Ano mais recente com desmatamento registrado (a serie PRODES e anual e defasada). */
+    @Query(value = "select cast(max(extract(year from data_referencia)) as integer) from desmatamento",
+        nativeQuery = true)
+    Integer maxAno();
+
     @Query("""
         select coalesce(sum(d.areaHa), 0)
         from Desmatamento d

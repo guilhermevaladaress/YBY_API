@@ -6,7 +6,9 @@ import com.yby.api.dto.CarbonoEvitadoDTO;
 import com.yby.api.dto.DesperdicioInteligenteDTO;
 import com.yby.api.dto.EquidadeTerritorialDTO;
 import com.yby.api.dto.KpiMultidimensionalDTO;
+import com.yby.api.dto.ProjecaoArmazenadaDTO;
 import com.yby.api.dto.ProjecaoDesmatamentoDTO;
+import com.yby.api.dto.RecalculoInteligenciaDTO;
 import com.yby.api.dto.RiscoPreditivoDTO;
 import com.yby.api.dto.RoiDesmatamentoEvitadoDTO;
 import com.yby.api.dto.SemaforoBiomaDTO;
@@ -17,6 +19,7 @@ import com.yby.api.service.inteligencia.DesperdicioInteligenteService;
 import com.yby.api.service.inteligencia.EquidadeService;
 import com.yby.api.service.inteligencia.KpiMultidimensionalService;
 import com.yby.api.service.inteligencia.ProjecaoDesmatamentoService;
+import com.yby.api.service.inteligencia.RecalculoInteligenciaService;
 import com.yby.api.service.inteligencia.RiscoPreditivoService;
 import com.yby.api.service.inteligencia.RoiDesmatamentoEvitadoService;
 import com.yby.api.service.inteligencia.SemaforoBiomaService;
@@ -53,6 +56,7 @@ public class InteligenciaController {
     private final CarbonoEvitadoService carbonoEvitadoService;
     private final ProjecaoDesmatamentoService projecaoDesmatamentoService;
     private final RoiDesmatamentoEvitadoService roiDesmatamentoEvitadoService;
+    private final RecalculoInteligenciaService recalculoInteligenciaService;
 
     public InteligenciaController(TendenciaService tendenciaService,
                                   KpiMultidimensionalService kpiMultidimensionalService,
@@ -63,7 +67,8 @@ public class InteligenciaController {
                                   AlocacaoService alocacaoService,
                                   CarbonoEvitadoService carbonoEvitadoService,
                                   ProjecaoDesmatamentoService projecaoDesmatamentoService,
-                                  RoiDesmatamentoEvitadoService roiDesmatamentoEvitadoService) {
+                                  RoiDesmatamentoEvitadoService roiDesmatamentoEvitadoService,
+                                  RecalculoInteligenciaService recalculoInteligenciaService) {
         this.tendenciaService = tendenciaService;
         this.kpiMultidimensionalService = kpiMultidimensionalService;
         this.semaforoBiomaService = semaforoBiomaService;
@@ -74,6 +79,7 @@ public class InteligenciaController {
         this.carbonoEvitadoService = carbonoEvitadoService;
         this.projecaoDesmatamentoService = projecaoDesmatamentoService;
         this.roiDesmatamentoEvitadoService = roiDesmatamentoEvitadoService;
+        this.recalculoInteligenciaService = recalculoInteligenciaService;
     }
 
     /** RN-101-A - Score de Prioridade com Tendencia. */
@@ -156,5 +162,22 @@ public class InteligenciaController {
         @RequestParam(required = false) BigDecimal preco,
         @RequestParam(required = false) BigDecimal valorAgropecuariaHaAno) {
         return roiDesmatamentoEvitadoService.avaliar(municipioId, ano, preco, valorAgropecuariaHaAno);
+    }
+
+    /**
+     * Recalcula e ARMAZENA os snapshots preditivos de todos os municipios (RN-300).
+     * Combina a serie historica de desmatamento com os focos de calor do INPE; restrito a GESTOR.
+     */
+    @PostMapping("/recalcular")
+    @PreAuthorize("hasRole('GESTOR')")
+    public RecalculoInteligenciaDTO recalcular() {
+        return recalculoInteligenciaService.recalcularTodos();
+    }
+
+    /** Snapshot preditivo armazenado de um municipio (resultado do ultimo recalculo). */
+    @GetMapping("/projecao-armazenada/{municipioId}")
+    @PreAuthorize("hasAnyRole('GESTOR','SERVIDOR')")
+    public ProjecaoArmazenadaDTO projecaoArmazenada(@PathVariable Long municipioId) {
+        return recalculoInteligenciaService.buscarProjecao(municipioId);
     }
 }

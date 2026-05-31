@@ -40,7 +40,10 @@ public class ProjecaoDesmatamentoService {
     public ProjecaoDesmatamentoDTO avaliar(Long municipioId, Integer horizonteAnos) {
         municipioService.buscarMunicipio(municipioId);
         int horizonte = (horizonteAnos == null || horizonteAnos <= 0) ? HORIZONTE_PADRAO : horizonteAnos;
-        int anoAtual = Year.now().getValue();
+        // A serie PRODES e anual e defasada: ancora no ultimo ano COM dado (nunca no ano corrente
+        // vazio, que produziria projecao zerada). Fallback para o ano corrente quando nao ha serie.
+        Integer anoMax = desmatamentoRepository.maxAno();
+        int anoAtual = (anoMax == null || anoMax == 0) ? Year.now().getValue() : anoMax;
 
         List<ValorAnualDTO> historico = new ArrayList<>();
         for (int a = anoAtual - (ANOS_HISTORICO - 1); a <= anoAtual; a++) {

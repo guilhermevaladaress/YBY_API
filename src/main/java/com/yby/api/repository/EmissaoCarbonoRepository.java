@@ -27,4 +27,14 @@ public interface EmissaoCarbonoRepository extends JpaRepository<EmissaoCarbono, 
                                                             Pageable pageable);
 
     List<EmissaoCarbono> findByDataReferenciaBetween(LocalDate dataInicio, LocalDate dataFim);
+
+    /** Data de referencia mais recente com emissao registrada (base para o filtro padrao da pagina). */
+    @Query("select max(e.dataReferencia) from EmissaoCarbono e")
+    LocalDate findMaxDataReferencia();
+
+    List<EmissaoCarbono> findByMunicipioIdAndDataReferenciaBetween(Long municipioId,
+                                                                   LocalDate dataInicio,
+                                                                   LocalDate dataFim);
+
+    void deleteByDataReferencia(LocalDate dataReferencia);
 }

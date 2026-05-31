@@ -35,8 +35,14 @@ public class CarbonoService {
     }
 
     public List<CarbonoHistoricoDTO> historicoMenores(LocalDate dataInicio, LocalDate dataFim, Integer limite) {
-        LocalDate inicio = dataInicio == null ? LocalDate.now().minusYears(1) : dataInicio;
-        LocalDate fim = dataFim == null ? LocalDate.now() : dataFim;
+        // Sem filtro de datas, a pagina deve mostrar o ano mais recente COM dado (a serie SEEG e
+        // anual e defasada): assim a consulta padrao nunca cai num intervalo vazio (ex.: futuro).
+        LocalDate ultimaData = emissaoCarbonoRepository.findMaxDataReferencia();
+        LocalDate fimPadrao = ultimaData != null ? ultimaData : LocalDate.now();
+        LocalDate inicioPadrao = fimPadrao.withDayOfYear(1);
+
+        LocalDate inicio = dataInicio == null ? inicioPadrao : dataInicio;
+        LocalDate fim = dataFim == null ? fimPadrao : dataFim;
         int limiteConsulta = (limite == null || limite <= 0) ? 20 : limite;
 
         if (inicio.isAfter(fim)) {
@@ -51,9 +57,11 @@ public class CarbonoService {
 
     public byte[] relatorioPdfMenores(LocalDate dataInicio, LocalDate dataFim, Integer limite) {
         List<CarbonoHistoricoDTO> historico = historicoMenores(dataInicio, dataFim, limite);
+        LocalDate ultimaData = emissaoCarbonoRepository.findMaxDataReferencia();
+        LocalDate fimPadrao = ultimaData != null ? ultimaData : LocalDate.now();
         return pdfReportService.gerarRelatorioCarbono(
-            dataInicio == null ? LocalDate.now().minusYears(1) : dataInicio,
-            dataFim == null ? LocalDate.now() : dataFim,
+            dataInicio == null ? fimPadrao.withDayOfYear(1) : dataInicio,
+            dataFim == null ? fimPadrao : dataFim,
             historico
         );
     }
