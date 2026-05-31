@@ -2,11 +2,7 @@ package com.yby.api.controller;
 
 import com.yby.api.dto.MunicipioRankingDTO;
 import com.yby.api.dto.PageResponseDTO;
-import com.yby.api.dto.TransparenciaMetadadosDTO;
-import com.yby.api.repository.MunicipioRepository;
 import com.yby.api.service.MunicipioService;
-import com.yby.api.service.inteligencia.AlgoritmoMetadata;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -18,20 +14,18 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * RN-300 - Transparencia e Open Data.
  *
- * <p>Endpoints publicos somente-leitura (ranking, geojson e metadados) para auditoria
- * cidada dos dados e calculos, sem autenticacao. Registra a versao do algoritmo e os
- * metadados de atualizacao (Lei 12.527/2011 - LAI; LC 131/2009).</p>
+ * <p>Endpoints publicos somente-leitura (ranking e geojson) para auditoria
+ * cidada dos dados e calculos, sem autenticacao (Lei 12.527/2011 - LAI;
+ * LC 131/2009).</p>
  */
 @RestController
 @RequestMapping("/api/v1/public")
 public class PublicController {
 
     private final MunicipioService municipioService;
-    private final MunicipioRepository municipioRepository;
 
-    public PublicController(MunicipioService municipioService, MunicipioRepository municipioRepository) {
+    public PublicController(MunicipioService municipioService) {
         this.municipioService = municipioService;
-        this.municipioRepository = municipioRepository;
     }
 
     @GetMapping("/ranking")
@@ -49,21 +43,5 @@ public class PublicController {
         return ResponseEntity.ok()
             .contentType(MediaType.parseMediaType("application/geo+json"))
             .body(municipioService.geoJson(semaforo));
-    }
-
-    @GetMapping("/metadados")
-    public ResponseEntity<TransparenciaMetadadosDTO> metadados() {
-        Map<String, String> pesos = new LinkedHashMap<>();
-        pesos.put("desmatamentoRecente", "40%");
-        pesos.put("eficienciaGasto", "30%");
-        pesos.put("irregularidadesCar", "20%");
-        pesos.put("areaElegivel", "10%");
-
-        return ResponseEntity.ok(new TransparenciaMetadadosDTO(
-            AlgoritmoMetadata.VERSAO,
-            AlgoritmoMetadata.BASE_LEGAL,
-            municipioRepository.count(),
-            municipioRepository.maxUltimaAtualizacao(),
-            pesos));
     }
 }

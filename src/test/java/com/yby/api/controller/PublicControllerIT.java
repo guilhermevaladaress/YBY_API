@@ -22,11 +22,4 @@ class PublicControllerIT extends AbstractApiIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.type").value("FeatureCollection"));
     }
-
-    @Test
-    void metadados_publico_exibeVersaoDoAlgoritmo() throws Exception {
-        mockMvc.perform(get("/api/v1/public/metadados"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.versaoAlgoritmo").isNotEmpty());
-    }
 }
