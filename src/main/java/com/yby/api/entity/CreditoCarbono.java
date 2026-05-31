@@ -48,7 +48,7 @@ public class CreditoCarbono {
     @Column(name = "meta_tco2e_ano", nullable = false, precision = 18, scale = 4)
     private BigDecimal metaTco2eAno;
 
-    /** Preco por tonelada de CO2e no ano base (R$). */
+    /** Preco por tonelada de CO2e no ano base em USD (dolar americano, padrao do mercado voluntario global). */
     @Column(name = "preco_tonelada", nullable = false, precision = 18, scale = 4)
     private BigDecimal precoTonelada;
 

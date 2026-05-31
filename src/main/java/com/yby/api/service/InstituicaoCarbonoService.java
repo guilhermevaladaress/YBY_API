@@ -86,7 +86,7 @@ public class InstituicaoCarbonoService {
      * @param somenteJredd quando verdadeiro, considera apenas instituicoes que compram JREDD+
      */
     public MatchCompradorDTO matchCompradores(Long creditoId, boolean somenteJredd) {
-        ProjecaoCarbonoDTO projecao = creditoCarbonoService.projetar(creditoId);
+        ProjecaoCarbonoDTO projecao = creditoCarbonoService.projetar(creditoId, null);
         BigDecimal tco2eTotal = projecao.tco2eTotal() == null ? BigDecimal.ZERO : projecao.tco2eTotal();
 
         List<InstituicaoCarbono> candidatas = somenteJredd
