@@ -10,7 +10,6 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 @ConfigurationProperties(prefix = "app.integracao")
 public record IntegracaoProperties(
     @DefaultValue Ibge ibge,
-    @DefaultValue Terrabrasilis terrabrasilis,
     @DefaultValue Inpe inpe,
     @DefaultValue Seplan seplan,
     @DefaultValue("17") String ufCodigoIbge,
@@ -20,12 +19,6 @@ public record IntegracaoProperties(
     public record Ibge(
         @DefaultValue("https://servicodados.ibge.gov.br/api/v1") String baseUrl,
         @DefaultValue("8000") int timeoutMs
-    ) {}
-
-    public record Terrabrasilis(
-        @DefaultValue("https://terrabrasilis.dpi.inpe.br/geoserver/deter-cerrado") String deterBaseUrl,
-        @DefaultValue("https://terrabrasilis.dpi.inpe.br/geoserver/prodes-cerrado") String prodesBaseUrl,
-        @DefaultValue("10000") int timeoutMs
     ) {}
 
     public record Inpe(

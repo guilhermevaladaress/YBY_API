@@ -11,7 +11,7 @@ import org.springframework.web.client.RestClient;
 public class AppConfig {
 
     /**
-     * RestClient compartilhado pelas integracoes externas (IBGE, TerraBrasilis, etc.).
+     * RestClient compartilhado pelas integracoes externas (IBGE, INPE, SEPLAN, etc.).
      * Timeouts curtos evitam que uma fonte instavel trave a aplicacao (RN-600 / resiliencia).
      */
     @Bean
