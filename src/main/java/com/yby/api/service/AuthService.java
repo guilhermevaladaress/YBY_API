@@ -30,17 +30,23 @@ public class AuthService {
     private final JwtService jwtService;
     private final UsuarioMapper usuarioMapper;
     private final AppSecurityProperties appSecurityProperties;
+    private final ResendEmailService emailService;
+    private final String frontendUrl;
 
     public AuthService(UsuarioRepository usuarioRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
                        UsuarioMapper usuarioMapper,
-                       AppSecurityProperties appSecurityProperties) {
+                       AppSecurityProperties appSecurityProperties,
+                       ResendEmailService emailService,
+                       @org.springframework.beans.factory.annotation.Value("${app.frontend-url:http://localhost:5173}") String frontendUrl) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.usuarioMapper = usuarioMapper;
         this.appSecurityProperties = appSecurityProperties;
+        this.emailService = emailService;
+        this.frontendUrl = frontendUrl;
     }
 
     public LoginResponseDTO login(LoginRequestDTO request) {
@@ -114,7 +120,15 @@ public class AuthService {
                 usuario.setResetToken(token);
                 usuario.setResetTokenExpiraEm(expiraEm);
                 usuarioRepository.save(usuario);
-                return new EsqueciSenhaResponseDTO(mensagem, token, expiraEm);
+
+                // Envia o link por e-mail (Resend). Se o e-mail for enviado, NAO devolve o
+                // token na resposta (seguranca). Sem e-mail configurado/entregue, devolve o
+                // token como fallback de desenvolvimento para o fluxo nao quebrar.
+                String link = frontendUrl + "/redefinir-senha?token=" + token;
+                boolean enviado = emailService.enviarRecuperacaoSenha(
+                    usuario.getEmail(), link, RESET_TOKEN_TTL_MINUTOS);
+
+                return new EsqueciSenhaResponseDTO(mensagem, enviado ? null : token, expiraEm);
             })
             .orElseGet(() -> new EsqueciSenhaResponseDTO(mensagem, null, null));
     }
