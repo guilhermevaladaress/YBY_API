@@ -39,10 +39,14 @@ public class ProjetoJreddService {
         this.auditService = auditService;
     }
 
+    // readOnly: mantem a sessao Hibernate aberta durante o toDTO, que acessa a
+    // colecao lazy `marcos` (sem isto -> LazyInitializationException / 500).
+    @Transactional(readOnly = true)
     public Page<ProjetoJreddDTO> listar(Pageable pageable) {
         return projetoRepository.findAll(pageable).map(this::toDTO);
     }
 
+    @Transactional(readOnly = true)
     public ProjetoJreddDTO buscar(Long id) {
         return toDTO(buscarEntidade(id));
     }
