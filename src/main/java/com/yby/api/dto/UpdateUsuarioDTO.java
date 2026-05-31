@@ -1,15 +1,16 @@
 package com.yby.api.dto;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-public record CreateUsuarioDTO(
+/**
+ * Atualizacao de usuario pelo gestor (nome, perfil e, opcionalmente, redefinicao de senha).
+ * Senha em branco/nula mantem a senha atual.
+ */
+public record UpdateUsuarioDTO(
     @NotBlank String nome,
-    @NotBlank @Email String email,
     @NotBlank @Pattern(regexp = "^(GESTOR|SERVIDOR)$") String role,
-    // Opcional: senha definida pelo gestor. Em branco/nulo -> o sistema gera uma aleatoria.
     @Size(min = 8, max = 120) String senha
 ) {
 }
